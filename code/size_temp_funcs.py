@@ -19,20 +19,18 @@ def size_resp(B_R, Ma):
     return B0_R
 
 # Arrhenius/Sharpe-Schoolfield for uptake
-def temp_growth(k, T, Tref, T_pk,N, B_U, Ma, Ea_U, Ea_D, X):
+def temp_growth(k, T, Tref, T_pk,N, B_U, Ma, Ea_U, Ea_D):
     '''
     Temperature dependence of uptake (modified Sharpe-Schoolfield). 
     '''
-    T_new = T + X
-    Sharpe = (size_growth(B_U, Ma) * np.exp((-Ea_U/k) * ((1/T_new)-(1/Tref))))/(1 + (Ea_U/(Ea_D - Ea_U)) * np.exp(Ea_D/k * (1/T_pk - 1/T_new)))
+    Sharpe = (size_growth(B_U, Ma) * np.exp((-Ea_U/k) * ((1/T)-(1/Tref))))/(1 + (Ea_U/(Ea_D - Ea_U)) * np.exp(Ea_D/k * (1/T_pk - 1/T)))
 
     return Sharpe
 
 # Arrhenius/Sharpe-Schoolfield for maintenance respiration
-def temp_resp(k, T, Tref, T_pk,N, B_R, Ma,  Ea_R, Ea_D, X):
+def temp_resp(k, T, Tref, T_pk,N, B_R, Ma,  Ea_R, Ea_D):
     '''
     Temperature dependence of respiration (modified Sharpe-Schoolfield). 
     '''
-    T_new = T + X
-    Sharpe = (size_resp(B_R, Ma) * np.exp((-Ea_R/k) * ((1/T_new)-(1/Tref))))/(1 + (Ea_R/(Ea_D - Ea_R)) * np.exp(Ea_D/k * (1/T_pk - 1/T_new)))
+    Sharpe = (size_resp(B_R, Ma) * np.exp((-Ea_R/k) * ((1/T)-(1/Tref))))/(1 + (Ea_R/(Ea_D - Ea_R)) * np.exp(Ea_D/k * (1/T_pk - 1/T)))
     return Sharpe

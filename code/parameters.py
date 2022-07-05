@@ -10,8 +10,8 @@ def params(N, M, T, k, Tref, T_pk_U, T_pk_R, B_U, B_R, Ma, Ea_U, Ea_R, Ea_D, lf)
     '''
     # Uptake
     # Give random uptake for each resources, sum up to the total uptake of the bacteria
-    X = np.random.uniform(0,20,N)
-    U_sum = st.temp_growth(k, T, Tref, T_pk_U, N, B_U, Ma, Ea_U, Ea_D, X)
+    # X = np.random.uniform(0,20,N)
+    U_sum = st.temp_growth(k, T, Tref, T_pk_U, N, B_U, Ma, Ea_U, Ea_D)
     diri = np.transpose(np.random.dirichlet(np.full(M,1),N))
     U = np.transpose(diri*U_sum)
 
@@ -19,7 +19,7 @@ def params(N, M, T, k, Tref, T_pk_U, T_pk_R, B_U, B_R, Ma, Ea_U, Ea_R, Ea_D, lf)
     # np.mean(np.mean(jaccard, axis = 0))
 
     # Respiration
-    R = st.temp_resp(k, T, Tref,T_pk_R, N, B_R, Ma, Ea_R, Ea_D, X) # find how varies with temperature (ar = arrhenius)
+    R = st.temp_resp(k, T, Tref,T_pk_R, N, B_R, Ma, Ea_R, Ea_D) # find how varies with temperature (ar = arrhenius)
 
     # Excretion
     # SUMMING UP TO 0.4 
