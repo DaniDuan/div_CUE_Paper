@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.integrate import solve_ivp
+from scipy import spatial
 import matplotlib.pylab as plt
 # from matplotlib.lines import Line2D
 import size_temp_funcs as st
@@ -11,19 +12,19 @@ import model_func as mod
 
 ######## Set up parameters ###########
 
-N = 50 # Number of consumers
-M = 100 # Number of resources
+N = 100 # Number of consumers
+M = 50 # Number of resources
 
 # Temperature params
-T = 273.15 + 0 # Temperature
+T = 273.15 + 10 # Temperature
 Tref = 273.15 + 0 # Reference temperature Kelvin
 Ma = 1 # Mass
 Ea_D = 3.5 # Deactivation energy - only used if use Sharpe-Schoolfield temp-dependance
 lf = 0.4 # Leakage
 p_value = 1 # External input resource concentration
 # covariance of B and Ea, abs(rho)<=1
-rho_R = 0
-rho_U = 0
+rho_R = -0.5
+rho_U = -0.5
 
 # Assembly
 ass = 1 # Assembly number, i.e. how many times the system can assemble
@@ -41,13 +42,16 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
     # Setted Parameters
     k = 0.0000862 # Boltzman constant
 
-    B_R0 = np.log(1.70); B_R0_var = 0.05* B_R0
+    B_R0 = np.log(1.70 * np.exp((-0.67/k) * ((1/Tref)-(1/273.15)))/(1 + (0.67/(Ea_D - 0.67)) * np.exp(Ea_D/k * (1/311.15 - 1/Tref)))) # Using CUE0 = 0.22, mean growth rate = 0.48
+    B_R0_var = 0.05* B_R0
     Ea_R_mean = 0.67; Ea_R_var = 0.04*Ea_R_mean
     cov_xy_R = rho_R * B_R0_var**0.5 * Ea_R_var ** 0.5
     mean_R = [B_R0, Ea_R_mean]
     cov_R = [[B_R0_var, cov_xy_R], [cov_xy_R, Ea_R_var]]  
 
-    B_U0 = np.log(4.47); B_U0_var = 0.05* B_U0
+    B_U0 = np.log((1.70/(1 - lf - 0.22)) * np.exp((-0.82/k) * ((1/Tref)-(1/273.15)))/(1 + (0.82/(Ea_D - 0.82)) * np.exp(Ea_D/k * (1/308.15 - 1/Tref))))
+    B_U0_var = 0.05* B_U0
+    # B_U0 = 1.70/(1 - lf - CUE_0)
     Ea_U_mean = 0.82; Ea_U_var = (0.04*Ea_U_mean)
     cov_xy_U = rho_U * B_U0_var**0.5 * Ea_U_var ** 0.5
     mean_U = [B_U0, Ea_U_mean]
@@ -56,9 +60,13 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
     ### Creating empty array for storing data ###
     result_array = np.empty((0,N+M)) # Array to store data in for plotting
     rich_series = np.empty((0))
+    U_out_total = np.empty((0,M))
+    R_out = np.empty((0, N))
     CUE_out = np.empty((0,N))
     Sr = np.empty((0,N))
     Ea_CUE_out = np.empty((0,N))
+    overlap = np.empty((0,N))
+    crossf = np.empty((0,N))   
 
     for i in range(ass):
 
@@ -88,8 +96,24 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
 
         ### Storing simulation results ###
         result_array = np.append(result_array, pops.y, axis=0)
+        U_out_total = np.append(U_out_total, U, axis = 0)
+        R_out = np.append(R_out, [R], axis = 0)
 
         ### Analysis ###
+
+        # Competition for resources
+    
+        sur_U = np.diag(pops.y[t_fin-1, 0:N])@(U*pops.y[t_fin-1, N:N+M])
+        # jaccard = np.array([[np.sum(np.minimum(U[i,],U[j,]))/np.sum(np.maximum(U[i,],U[j,])) for j in range(N)] for i in range(N)])
+        cosine = np.nan_to_num(np.array([[1-spatial.distance.cosine(sur_U[i],sur_U[j]) for j in range(N)] for i in range(N)]), nan = 0)
+        overlap = np.append(overlap, [np.mean(cosine, axis = 0)], axis = 0)
+
+        # Cross-feeding
+        # leak = U@l
+        sur_leak = np.diag(pops.y[t_fin-1, 0:N])@((U*pops.y[t_fin-1, N:N+M])@l)
+        # cf = np.array([[np.sum(np.minimum(leak[i], U[j]))/np.sum(np.maximum(leak[i], U[j])) for j in range(N)] for i in range(N)])
+        cf = np.nan_to_num(np.array([[1-spatial.distance.cosine(sur_leak[i],sur_U[j]) for j in range(N)] for i in range(N)]), nan=0)
+        crossf = np.append(crossf, [np.mean(cf, axis = 1)], axis = 0)
 
         # Richness
         rich_series = np.append(rich_series, [len(np.where(pops.y[t_fin-1,0:N])[0])]) # Get the consumer concentrations from last timestep and find out survivors
@@ -102,8 +126,8 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
         # S*
         Sr = np.append(Sr, [R/(np.sum(U, axis = 1)*(1-lf))], axis = 0)
 
-    return result_array, rich_series, CUE_out, Ea_CUE_out, Sr
+    return result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr
 
-result_array, rich_series, CUE_out, Ea_CUE_out, Sr = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
+# result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
 
-rich_series
+# rich_series
