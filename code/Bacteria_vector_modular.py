@@ -105,15 +105,15 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
     
         sur_U = np.diag(pops.y[t_fin-1, 0:N])@(U*pops.y[t_fin-1, N:N+M])
         # jaccard = np.array([[np.sum(np.minimum(U[i,],U[j,]))/np.sum(np.maximum(U[i,],U[j,])) for j in range(N)] for i in range(N)])
-        cosine = np.nan_to_num(np.array([[1-spatial.distance.cosine(sur_U[i],sur_U[j]) for j in range(N)] for i in range(N)]), nan = 0)
-        overlap = np.append(overlap, [np.mean(cosine, axis = 0)], axis = 0)
+        cosine = np.array([[1-spatial.distance.cosine(sur_U[i],sur_U[j]) for j in range(N)] for i in range(N)])
+        overlap = np.append(overlap, [np.nanmean(cosine, axis = 0)], axis = 0)
 
         # Cross-feeding
         # leak = U@l
         sur_leak = np.diag(pops.y[t_fin-1, 0:N])@((U*pops.y[t_fin-1, N:N+M])@l)
         # cf = np.array([[np.sum(np.minimum(leak[i], U[j]))/np.sum(np.maximum(leak[i], U[j])) for j in range(N)] for i in range(N)])
-        cf = np.nan_to_num(np.array([[1-spatial.distance.cosine(sur_leak[i],sur_U[j]) for j in range(N)] for i in range(N)]), nan=0)
-        crossf = np.append(crossf, [np.mean(cf, axis = 1)], axis = 0)
+        cf = np.array([[1-spatial.distance.cosine(sur_leak[i],sur_U[j]) for j in range(N)] for i in range(N)])
+        crossf = np.append(crossf, [np.nanmean(cf, axis = 1)], axis = 0)
 
         # Richness
         rich_series = np.append(rich_series, [len(np.where(pops.y[t_fin-1,0:N])[0])]) # Get the consumer concentrations from last timestep and find out survivors

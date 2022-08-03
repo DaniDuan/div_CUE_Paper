@@ -133,9 +133,10 @@ summ = summ[which(summ$ConKingdom == 'Bacteria'),]
 s_data = data.frame(summ$X, summ$Species, summ$B0, summ$E, summ$T_pk, summ$E_D, summ$R_Squared, summ$AIC, summ$BIC)
 names(s_data) = c('ID', 'Species', 'B0', 'Ea', 'T_pk', 'E_D', 'r_sq', 'AIC', 'BIC')
 
-s_data = s_data[-which(s_data$Ea > 3),]
+s_data = s_data[-which(s_data$Ea > 2),]
+cov(s_data$B0, s_data$Ea) 
 
 png('../result/B_Ea_empirical.png', width = 800, height = 600)
-ggplot(s_data, aes(x=B0, y=Ea)) + labs(x = expression("B"[0]*""), y = "E")+
-  geom_point(size=4, shape=16,color = "black", alpha = 0.7) + theme_bw() + theme(panel.background = element_blank(), text = element_text(size = 25))
+ggplot(s_data, aes(x=B0, y=Ea)) + labs(x = expression("log(B"[0]*")"), y = "E")+
+  geom_point(size=4, shape=16,color = "black", alpha = 0.7) + theme_bw() + theme(panel.background = element_blank(), text = element_text(size = 35))
 dev.off()
