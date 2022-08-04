@@ -85,6 +85,7 @@ import matplotlib.pylab as plt
 import numpy as np
 import scipy as sc
 from scipy import stats
+import pandas as pd
 
 ########## Setting Parameters ###########
 N = 100 # Number of consumers
@@ -209,7 +210,8 @@ eR_mean = np.array([np.mean(eR[i]) for i in range(T_c)])
 eR_ci = np.array([1.96 * np.std(eR[i])/(len(eR[i])**0.5) for i in range(T_c)])
 
 rich_sur = [[np.repeat(rich[i][j], rich[i][j]) for j in range(ass)] for i in range(T_c)]
-rich_ext = [[np.repeat(rich[i][j], N - rich[i][j]) for j in range(ass)] for i in range(T_c)]
+# rich_ext = [[np.repeat(rich[i][j], N - rich[i][j]) for j in range(ass)] for i in range(T_c)]
+rich_temp = [[np.repeat(i, rich[i][j]) for j in range(ass)] for i in range(T_c)]
 
 overlap_sur_mean = np.array([np.mean(sur_overlap[i]) for i in range(T_c)])
 overlap_sur_ci = np.array([1.96 * np.std(sur_overlap[i])/(len(sur_overlap[i])**0.5) for i in range(T_c)])
@@ -265,13 +267,13 @@ plt.rc('xtick', labelsize=25)
 plt.rc('ytick', labelsize=25) 
 # plt.rcParams.update(mpl.rcParamsDefault)
 
-plt.plot(T_plot, rich_mean)
-plt.fill_between(T_plot, rich_mean - rich_ci, rich_mean + rich_ci, alpha=0.1, linewidth=2.5)
-plt.xlabel('Temperature ($^\circ$C)')
-plt.ylabel('Richness')
-# plt.text(-5,14,'A',fontsize= 'x-large')
-# plt.savefig('../result/rich_temp.png')
-plt. show()
+# plt.plot(T_plot, rich_mean)
+# plt.fill_between(T_plot, rich_mean - rich_ci, rich_mean + rich_ci, alpha=0.1, linewidth=2.5)
+# plt.xlabel('Temperature ($^\circ$C)')
+# plt.ylabel('Richness')
+# # plt.text(-5,14,'A',fontsize= 'x-large')
+# # plt.savefig('../result/rich_temp.png')
+# plt. show()
 
 
 CUE_var = np.array([np.var(all_CUE[i]) for i in range(T_c)])
@@ -291,7 +293,7 @@ ax1.legend(lns, [i.get_label() for i in lns], loc = 2)
 plt.tight_layout()
 # text(-5,400,'B',fontsize= 'x-large')
 # ax1.text(-5,900,'A',fontsize= 'x-large')
-plt.savefig('../result/rich_varCUE_temp.png')
+# plt.savefig('../result/rich_varCUE_temp.png')
 plt. show()
 
 fig, ax1 = plt.subplots()
@@ -312,7 +314,7 @@ ax1.legend(lns, [i.get_label() for i in lns], loc = 2)
 plt.tight_layout()
 # text(-5,400,'B',fontsize= 'x-large')
 # ax1.text(-5,900,'A',fontsize= 'x-large')
-plt.savefig('../result/U+R_temp.png')
+# plt.savefig('../result/U+R_temp.png')
 plt. show()
 
 plt.plot(T_plot, CUE_mean, 'r', label = "Survivor",linewidth=2.5)
@@ -324,7 +326,7 @@ plt.ylabel('CUE')
 plt.legend()
 # plt.tight_layout()
 # plt.text(-5,0.6,'B',fontsize= 'x-large')
-plt.savefig('../result/CUE_temp.png')
+# plt.savefig('../result/CUE_temp.png')
 plt. show()
 
 plt.plot(T_plot, overlap_sur_mean, color = 'b', alpha = 0.7, label = 'Resource Overlap')
@@ -339,7 +341,7 @@ plt.xlabel('Temperature ($^\circ$C)')
 plt.ylabel('Pair-wise Interactions')
 plt.legend(fontsize = 'x-small', framealpha = 0.4)
 # plt.text(-6,0.4,'A',fontsize= 'x-large')
-plt.savefig('../result/comp_coop.png')
+# plt.savefig('../result/comp_coop.png')
 plt.show()
 
 plt.scatter(crossf_sur_mean, overlap_sur_mean, color = "b", alpha = 0.7)
@@ -354,18 +356,48 @@ plt.rc('xtick', labelsize=25)
 plt.rc('ytick', labelsize=25) 
 # plt.rcParams.update(mpl.rcParamsDefault)
 
+######################### Overlap and cross-feeding after species sorting #################################
+rich_sur = [[np.repeat(rich[i][j], rich[i][j]) for j in range(ass)] for i in range(T_c)]
+# rich_temp = [[np.repeat(i, rich[i][j]) for j in range(ass)] for i in range(T_c)]
+rich_all = np.concatenate(np.concatenate(rich_sur))
+rich_all_string = [str(int(rich_all[i])) for i in np.arange(len(rich_all))]
 all_cross = np.concatenate(sur_crossf, axis = 0)
 all_over = np.concatenate(sur_overlap, axis = 0)
-plt.scatter(all_over, all_cross, color = "k", alpha = 0.5, marker = 'x')
+df = pd.DataFrame(dict(all_cross = all_cross, all_over = all_over, rich_all = rich_all_string))
+colors = {}
+all = np.arange(np.min(rich_all), np.max(rich_all)+1)
+[colors.update({'%d' %(int(all[i])):plt.cm.YlGnBu(np.linspace(0,1,len(all)))[i]}) for i in np.arange(len(all))]
+# [colors.update({'%d' %(pd.unique(rich_all)[i]):cm.ocean(np.linspace(0,len(pd.unique(rich_all)),len(pd.unique(rich_all))+1))[i]}) for i in np.arange(len(pd.unique(rich_all)))]
+plt.scatter(df['all_over'], df['all_cross'], c= df['rich_all'].map(colors), alpha = 0.7, marker = 'x')
+# plt.colorbar()
 plt.xlabel("Resource Overlap")
 plt.ylabel("Cross-feeding")
 plt.plot(np.arange(-0.5, 1, 0.001), np.arange(-0.5, 1, 0.001), color = 'k',linewidth=2, alpha = 0.7)
 plt.savefig('../result/scatter_comp_coop_withline.png')
 plt.show()
 
+# ############################## At the beginning of simulation ###########################################
+# cross_bf = np.concatenate((np.concatenate(sur_crossf, axis = 0), np.concatenate(ext_crossf, axis = 0)))
+# over_bf = np.concatenate((np.concatenate(sur_overlap, axis = 0), np.concatenate(ext_overlap, axis = 0)))
+# rich_bf = np.concatenate(np.concatenate([[np.repeat(rich[i][j], N) for j in range(ass)] for i in range(T_c)]))
+# df = pd.DataFrame(dict(cross_bf = cross_bf, over_bf = over_bf, rich_bf = [str(int(rich_bf[i])) for i in np.arange(len(rich_bf))]))
+# colors = {}
+# all = np.arange(np.min(rich_bf), np.max(rich_bf)+1)
+# [colors.update({'%d' %(int(all[i])):plt.cm.YlGnBu(np.linspace(0,1,len(all)))[i]}) for i in np.arange(len(all))]
+# # [colors.update({'%d' %(pd.unique(rich_all)[i]):cm.ocean(np.linspace(0,len(pd.unique(rich_all)),len(pd.unique(rich_all))+1))[i]}) for i in np.arange(len(pd.unique(rich_all)))]
+# plt.scatter(df['over_bf'], df['cross_bf'], c= df['rich_bf'].map(colors), alpha = 0.7, marker = 'x')
+# # plt.colorbar()
+# plt.xlabel("Resource Overlap")
+# plt.ylabel("Cross-feeding")
+# # plt.plot(np.arange(-0.5, 1, 0.001), np.arange(-0.5, 1, 0.001), color = 'k',linewidth=2, alpha = 0.7)
+# # plt.savefig('../result/scatter_inter_bf.png')
+# plt.show()
+
+
+# plt.scatter(1,1,c = np.array([0.03137255, 0.11372549, 0.34509804, 1.        ]))
+
 # m, b, r_value, p_value, std_err = sc.stats.linregress(all_over,all_cross)
 # print(r_value**2)
-
 
 plt.hist(all_over, color = "b", label = "Resource Overlap", alpha = 0.7)
 plt.hist(all_cross, color = "r", label = "Facilitation", alpha = 0.7)

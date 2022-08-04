@@ -89,6 +89,7 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
 
         # Integration
         t = np.linspace(0,t_fin-1,t_fin) 
+        # R = R * np.sum(U, axis = 1)/np.mean(np.sum(U, axis = 1)) # Adding in a cost function for maintenance lost
         pars = (U, R, l, p, l_sum, N, M, typ, K) # Parameters to pass onto model
 
         pops = solve_ivp(mod.metabolic_model, t_span= [0,t_fin], y0=x0, t_eval = t, args = pars, method = 'BDF') # Integrate
@@ -102,14 +103,19 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
         ### Analysis ###
 
         # Competition for resources
+        # # jaccard = np.array([[np.sum(np.minimum(U[i,],U[j,]))/np.sum(np.maximum(U[i,],U[j,])) for j in range(N)] for i in range(N)])
+        # cosine = np.array([[1-spatial.distance.cosine(U[i],U[j]) for j in range(N)] for i in range(N)])
+        # overlap = np.append(overlap, [np.nanmean(cosine, axis = 0)], axis = 0)
     
         sur_U = np.diag(pops.y[t_fin-1, 0:N])@(U*pops.y[t_fin-1, N:N+M])
-        # jaccard = np.array([[np.sum(np.minimum(U[i,],U[j,]))/np.sum(np.maximum(U[i,],U[j,])) for j in range(N)] for i in range(N)])
         cosine = np.array([[1-spatial.distance.cosine(sur_U[i],sur_U[j]) for j in range(N)] for i in range(N)])
         overlap = np.append(overlap, [np.nanmean(cosine, axis = 0)], axis = 0)
 
         # Cross-feeding
         # leak = U@l
+        # cf = np.array([[1-spatial.distance.cosine(leak[i],U[j]) for j in range(N)] for i in range(N)])
+        # crossf = np.append(crossf, [np.nanmean(cf, axis = 1)], axis = 0)
+
         sur_leak = np.diag(pops.y[t_fin-1, 0:N])@((U*pops.y[t_fin-1, N:N+M])@l)
         # cf = np.array([[np.sum(np.minimum(leak[i], U[j]))/np.sum(np.maximum(leak[i], U[j])) for j in range(N)] for i in range(N)])
         cf = np.array([[1-spatial.distance.cosine(sur_leak[i],sur_U[j]) for j in range(N)] for i in range(N)])
