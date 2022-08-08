@@ -12,11 +12,11 @@ import model_func as mod
 
 ######## Set up parameters ###########
 
-N = 100 # Number of consumers
-M = 50 # Number of resources
+N = 10 # Number of consumers
+M = 2 # Number of resources
 
 # Temperature params
-T = 273.15 + 10 # Temperature
+T = 273.15 + 25 # Temperature
 Tref = 273.15 + 0 # Reference temperature Kelvin
 Ma = 1 # Mass
 Ea_D = 3.5 # Deactivation energy - only used if use Sharpe-Schoolfield temp-dependance
@@ -28,7 +28,7 @@ rho_U = -0.5
 
 # Assembly
 ass = 1 # Assembly number, i.e. how many times the system can assemble
-t_fin = 2500 # Number of time steps
+t_fin = 4000 # Number of time steps
 typ = 1 # Functional response, Type I or II
 K = 5 # Half saturation constant
 
@@ -94,6 +94,8 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
 
         pops = solve_ivp(mod.metabolic_model, t_span= [0,t_fin], y0=x0, t_eval = t, args = pars, method = 'BDF') # Integrate
         pops.y = np.transpose(np.round(pops.y, 7))
+        # pops.y = np.transpose(pops.y)
+
 
         ### Storing simulation results ###
         result_array = np.append(result_array, pops.y, axis=0)
@@ -129,11 +131,20 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
         CUE_out = np.append(CUE_out, [CUE], axis = 0)
         Ea_CUE_out = np.append(Ea_CUE_out, [B_R*(Ea_U - Ea_R)/(B_U*(1 - lf) - B_R)], axis = 0)
 
-        # S*
-        Sr = np.append(Sr, [R/(np.sum(U, axis = 1)*(1-lf))], axis = 0)
+        # # S*
+        # Sr = np.append(Sr, [R/(np.sum(U, axis = 1)*(1-lf))], axis = 0)
+
+        # ## trying left inverse U to get the R* of community, then can possibly get the boundary for C. 
+        # Sr = (1/(1-lf))*np.linalg.pinv(U) @ R
+        # # R - (1-lf)*U@Sr # this equals to 0 but Sr doesnt equal equilibrium resource concentration pops.y[t_fin-1, N:N+M]
+        # # R - (1-lf)*U@pops.y[t_fin-1, N:N+M] 
+        # delta = [[1 if i == j else 0 for j in range(M)] for i in range(M)]
+        # L = delta - l
+        # Ce = p @ np.linalg.pinv((U @ np.diag(Sr) @ L))
+        # # a = p - pops.y[t_fin-1,0:N] @ (U @ np.diag(Sr) @ L)
 
     return result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr
 
-# result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
+result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
 
-# rich_series
+rich_series

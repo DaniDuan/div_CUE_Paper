@@ -13,7 +13,8 @@ def metabolic_model(t, x, U, R, l, p, l_sum, N, M, typ, K):
         Mo = x[N:N+M]/(K + x[N:N+M]) # Monod function for type 2
 
     A = np.empty((N+M))
-    A[0:N] = x[0:N] * (np.sum((1 - l_sum) * Mo * U, axis=1) - R)
+
+    A[0:N] = x[0:N] * ((1 - l_sum) * U @ x[N:N+M] - R)
     # x[0:N] * (((1-l_sum)*U) @ x[N:N+M] - R)
     A[N:N+M] = p - x[0:N] @ (U * Mo) + x[0:N] @ ((U * Mo) @ l) 
     
