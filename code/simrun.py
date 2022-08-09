@@ -1,4 +1,4 @@
-from re import S
+from re import S, U
 from turtle import color
 from Bacteria_vector_modular import ass_temp_run
 import matplotlib.pylab as plt
@@ -109,6 +109,7 @@ K = 0.5 # Half saturation constant for Monod equation(Type II)
 T_c = 26 # How many temperatures to cover (how many cycles to run)
 
 rich = np.empty((0, ass))
+sog = np.empty((0, ass))
 eq = np.empty((0, ass))
 eq_sur = np.empty((0, ass))
 eq_sur_ci = np.empty((0, ass))
@@ -139,8 +140,9 @@ all_CUE = []
 
 for i in range(T_c):
     T = 273.15 + i # Temperature
-    result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
+    result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr, var_U = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
     rich = np.append(rich, [rich_series.flatten()], axis = 0)
+    sog = np.append(sog, [var_U.flatten()], axis = 0)
     
     sur = [np.where(result_array[(i+1)*t_fin-1, 0:N]) for i in range(ass)]
     ext = [np.where(result_array[(i+1)*t_fin-1, 0:N] == 0) for i in range(ass)]
@@ -183,10 +185,10 @@ for i in range(T_c):
 #      'sU': sU, 'sR': sR, 'eU': eU, 'eR':eR, 'sur_var':sur_var, 'sur_var_ci':sur_var_ci,\
 #      'ext_var': ext_var, 'ext_var_ci':ext_var_ci, 'all_Ea_ci': all_Ea_ci, 'sur_CUE':sur_CUE, \
 #      'ext_CUE':ext_CUE, 'sur_Sr': sur_Sr, 'all_Sr':all_Sr, 'sur_overlap':sur_overlap, \
-#      'ext_overlap':ext_overlap, 'sur_crossf':sur_crossf, 'ext_crossf':ext_crossf}
+#      'ext_overlap':ext_overlap, 'sur_crossf':sur_crossf, 'ext_crossf':ext_crossf, 'sog':sog}
 # np.save('../data/temp_rich.npy', temp_rich) 
 
-temp_rich = np.load('../data/temp_rich.npy',allow_pickle='TRUE').item()
+# temp_rich = np.load('../data/temp_rich.npy',allow_pickle='TRUE').item()
 
 rich_mean = np.nanmean(rich, axis = 1)
 rich_ci =  1.96 * np.nanstd(rich,axis = 1)/(ass**0.5)
@@ -209,6 +211,7 @@ eU_ci = np.array([1.96 * np.std(eU[i])/(len(eU[i])**0.5) for i in range(T_c)])
 eR_mean = np.array([np.mean(eR[i]) for i in range(T_c)])
 eR_ci = np.array([1.96 * np.std(eR[i])/(len(eR[i])**0.5) for i in range(T_c)])
 
+all_U = [np.concatenate((sU[i],eU[i])) for i in range(T_c)]
 rich_sur = [[np.repeat(rich[i][j], rich[i][j]) for j in range(ass)] for i in range(T_c)]
 # rich_ext = [[np.repeat(rich[i][j], N - rich[i][j]) for j in range(ass)] for i in range(T_c)]
 rich_temp = [[np.repeat(i, rich[i][j]) for j in range(ass)] for i in range(T_c)]
@@ -373,7 +376,24 @@ plt.scatter(df['all_over'], df['all_cross'], c= df['rich_all'].map(colors), alph
 plt.xlabel("Resource Overlap")
 plt.ylabel("Cross-feeding")
 plt.plot(np.arange(-0.5, 1, 0.001), np.arange(-0.5, 1, 0.001), color = 'k',linewidth=2, alpha = 0.7)
-plt.savefig('../result/scatter_comp_coop_withline.png')
+# plt.savefig('../result/scatter_comp_coop_withline.png')
+plt.show()
+
+sog_sur = [[np.repeat(sog[i][j], rich[i][j]) for j in range(ass)] for i in range(T_c)]
+sog_all = np.concatenate(np.concatenate(sog_sur))
+sog_all_string = [str(int(sog_all[i])) for i in np.arange(len(sog_all))]
+all_cross = np.concatenate(sur_crossf, axis = 0)
+all_over = np.concatenate(sur_overlap, axis = 0)
+df = pd.DataFrame(dict(all_cross = all_cross, all_over = all_over, sog_all = sog_all_string))
+colors = {}
+all = np.arange(np.min(sog_all), np.max(sog_all)+1)
+[colors.update({'%d' %(int(all[i])):plt.cm.YlGnBu(np.linspace(0,1,len(all)))[i]}) for i in np.arange(len(all))]
+plt.scatter(df['all_over'], df['all_cross'], c= df['sog_all'].map(colors), alpha = 1, marker = 'x')
+# plt.colorbar()
+plt.xlabel("Resource Overlap")
+plt.ylabel("Cross-feeding")
+plt.plot(np.arange(-0.5, 1, 0.001), np.arange(-0.5, 1, 0.001), color = 'k',linewidth=2, alpha = 0.7)
+# plt.savefig('../result/sc_compcoop_colorbysog.png')
 plt.show()
 
 # ############################## At the beginning of simulation ###########################################

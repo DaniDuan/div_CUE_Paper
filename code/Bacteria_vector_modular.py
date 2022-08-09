@@ -12,8 +12,8 @@ import model_func as mod
 
 ######## Set up parameters ###########
 
-N = 10 # Number of consumers
-M = 2 # Number of resources
+N = 5 # Number of consumers
+M = 3 # Number of resources
 
 # Temperature params
 T = 273.15 + 25 # Temperature
@@ -67,6 +67,7 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
     Ea_CUE_out = np.empty((0,N))
     overlap = np.empty((0,N))
     crossf = np.empty((0,N))   
+    var_U = np.empty((0))
 
     for i in range(ass):
 
@@ -101,7 +102,7 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
         result_array = np.append(result_array, pops.y, axis=0)
         U_out_total = np.append(U_out_total, U, axis = 0)
         R_out = np.append(R_out, [R], axis = 0)
-
+        var_U = np.append(var_U, np.mean(np.var(U, axis = 1)))
         ### Analysis ###
 
         # Competition for resources
@@ -132,7 +133,7 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
         Ea_CUE_out = np.append(Ea_CUE_out, [B_R*(Ea_U - Ea_R)/(B_U*(1 - lf) - B_R)], axis = 0)
 
         # # S*
-        # Sr = np.append(Sr, [R/(np.sum(U, axis = 1)*(1-lf))], axis = 0)
+        Sr = np.append(Sr, [R/(np.sum(U, axis = 1)*(1-lf))], axis = 0)
 
         # ## trying left inverse U to get the R* of community, then can possibly get the boundary for C. 
         # Sr = (1/(1-lf))*np.linalg.pinv(U) @ R
@@ -143,8 +144,8 @@ def ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R
         # Ce = p @ np.linalg.pinv((U @ np.diag(Sr) @ L))
         # # a = p - pops.y[t_fin-1,0:N] @ (U @ np.diag(Sr) @ L)
 
-    return result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr
+    return result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr, var_U
 
-result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
+# result_array, rich_series, l, U_out_total, R_out, CUE_out, Ea_CUE_out, overlap, crossf, Sr, var_U = ass_temp_run(t_fin, N, M, T, Tref, Ma, ass, Ea_D, lf, p_value, typ, K, rho_R, rho_U)
 
-rich_series
+# rich_series
