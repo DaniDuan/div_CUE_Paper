@@ -135,8 +135,35 @@ names(s_data) = c('ID', 'Species', 'B0', 'Ea', 'T_pk', 'E_D', 'r_sq', 'AIC', 'BI
 
 s_data = s_data[-which(s_data$Ea > 2),]
 cov(s_data$B0, s_data$Ea) 
+mean(s_data$B0); var(s_data$B0)
+mean(s_data$Ea); var(s_data$Ea)
 
 png('../result/B_Ea_empirical.png', width = 800, height = 600)
 ggplot(s_data, aes(x=B0, y=Ea)) + labs(x = expression("log(B"[0]*")"), y = "E")+
   geom_point(size=4, shape=16,color = "black", alpha = 0.7) + theme_bw() + theme(panel.background = element_blank(), text = element_text(size = 35))
 dev.off()
+
+##########################################################################
+cov(s_data$B0, s_data$Ea) 
+mean(s_data$B0); var(s_data$B0)
+mean(s_data$Ea); var(s_data$Ea)
+
+cov(log(grow_data$B0), grow_data$Ea)
+mean(log(grow_data$B0)); var(log(grow_data$B0))
+mean(grow_data$Ea); var(grow_data$Ea)
+
+cov(log(res_data$B0), res_data$Ea)
+mean(log(res_data$B0)); var(log(res_data$B0))
+mean(res_data$Ea); var(res_data$Ea)
+mean(res_data$B0)
+
+# B0_10 = Schoolfield(10+273.15, exp(s_data$B0), s_data$T_pk, s_data$Ea, s_data$E_D)
+# mean(log(B0_10)); var(log(B0_10))
+B0_u = mean(B0_10_res)/(1-0.22-0.4)
+B0_u_10 = Schoolfield(10+273.15, B0_u, mean(s_data$T_pk), mean(s_data$Ea), mean(s_data$E_D))
+log(B0_u_10)
+
+B0_10_res = Schoolfield(10+273.15, res_data$B0, res_data$T_pk, res_data$Ea, res_data$E_D)
+mean(log(B0_10_res)); var(log(B0_10_res))
+mean(B0_10_res)
+
