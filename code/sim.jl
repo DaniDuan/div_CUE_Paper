@@ -4,10 +4,12 @@
 using Distributions
 using LinearAlgebra
 using DifferentialEquations
-using Plots, StatsPlots
+# using Plots, StatsPlots
 using Sundials
 using Parameters
 using CSV, DataFrames
+using CairoMakie
+
 # Include simulation code files
 include("micrm_params.jl") # Contains function gereate_params with default sampling scheme
 
@@ -69,7 +71,7 @@ for i in range(0, stop = 25, length = 26)
     T = 273.15 + i 
     # all = Float64[]
     for j in 1:50
-        p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=0.4, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
+        p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=0.3, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
         x0 = fill(0.1, (N+M))
         prob = ODEProblem(dxx!, x0, tspan, p)
         sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
@@ -85,18 +87,20 @@ end
 # richness
 Temp = Any[]
 [append!(Temp, fill(i, 50)) for i in 0:25][1]
-plot_scatter =scatter(Temp, all, color = :forestgreen, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7)
-# richness_all = DataFrame(richness = all)
+Temp = [float(x) for x in Temp if x isa Number]
+# plot_scatter =scatter(Temp, all, color = :forestgreen, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7)
+richness_all = DataFrame(richness = all)
+relative_all = all./maximum(all)
 # CSV.write("../data/all.csv", richness_all, writeheader=false)
 # richness_all = CSV.read("../data/all.csv", DataFrame, header=false)[:,1]
-
+# relative_all = richness_all./maximum(richness_all)
 ################## reading EMP data ###############################
 EMP_data = CSV.read("../data/EMP_filtered.csv", DataFrame, header= true)
 EMP_relative_rich = EMP_data[:, "relative_rich"]
 EMP_temp = EMP_data[:, "Temp"]
 
 EMP = [EMP_temp EMP_relative_rich]
-scatter!(EMP_temp, EMP_relative_rich, color = :darkorange, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7, label = "EMP")
+# scatter!(EMP_temp, EMP_relative_rich, color = :darkorange, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7, label = "EMP")
 
 # quan = DataFrame()
 # for i in unique(EMP_data[:, "Temp"])
@@ -158,6 +162,8 @@ for unique_bin in bins
 end
 
 x_data_pre = filtered_df_pre[:, "Temp"]; y_data_pre = filtered_df_pre[:, "relative_richness"]
+x_data_pre = [float(x) for x in x_data_pre if x isa Number]
+
 # fitting gaussian
 fit_result = curve_fit(gaussian, x_data_pre, y_data_pre, initial_params)
 
@@ -169,18 +175,60 @@ y_fit_pre = gaussian(x_fit_pre, best_fit_params)
 
 
 ########################################## all plots #####################
-scatter(Temp, relative_all, color = :green, markerstrokecolor = nothing, 
-    markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.5,label = "Prediction")
-scatter!(EMP_temp, EMP_relative_rich, color = :orange, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.5, label = "EMP")
-scatter!(x_data, y_data, color = :darkorange, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)), fillalpha = 0.7, label="")
-# Plot the fitted Gaussian curve
-plot!(x_fit, y_fit, linewidth=3,color = :darkorange, label="EMP_Gaussian")
-scatter!(x_data_pre, y_data_pre, color = :darkgreen, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)), fillalpha = 0.7, label="")
-# Plot the fitted Gaussian curve
-plot!(x_fit_pre, y_fit_pre, linewidth=3,color = :darkgreen, label="MiCRM_Gaussian")
-xlabel!("Temperature")
-ylabel!("Relative richness")
+f = Figure(fontsize = 24, resolution = (1000, 600));
+ax = Axis(f[1,1], title = "MiCRM Prediction vs. EMP Data", xlabel = "Temperature", ylabel = "Relative Richness")
+scatter!(ax, Temp, relative_all, color = :green, markersize = 5, label = "Prediction")
+scatter!(ax, EMP_temp, EMP_relative_rich, color = :orange, markersize = 5, label = "EMP")
+scatter!(ax, x_data, y_data, color = :darkorange, markersize = 10, fillalpha = 0.7)
+scatter!(ax, x_data_pre, y_data_pre, color = :darkgreen, markersize = 10, fillalpha = 0.7)
+# Gaussian curves
+lines!(ax, x_fit, y_fit, color = :darkorange, linewidth = 3, label = "EMP_Gaussian")
+lines!(ax, x_fit_pre, y_fit_pre, color = :darkgreen, linewidth = 3, label = "MiCRM_Gaussian")
+# axislegend(labelsize=10)
+f[1, 2] = Legend(f, ax, framevisible = false, labelsize=16)
+f
 
-# savefig("test.pdf")
+CairoMakie.activate!(type = "png")
+save("../result/MiCRM_vs_EMP.png", f) 
 
-########################################### plot against EMP ##################################################
+
+####################################################################
+N=100
+M=50
+### Temp params 
+# T=15+273.15; 
+ρ_t=[-0.1384 -0.1384]; Tr=273.15+13; Ed=3.5 #[-0.1384 -0.1384]
+###################################
+# Generate MiCRM parameters
+tspan = (0.0, 15000.0)
+# here we define a callback that terminates integration as soon as system reaches steady state
+condition(du, t, integrator) = norm(integrator(t, Val{1})) <= eps()
+affect!(integrator) = terminate!(integrator)
+cb = DiscreteCallback(condition, affect!)
+
+all = Float64[]
+richness = Float64[]; richness_var = Float64[]
+for i in range(0, stop = 25, length = 26)
+    T = 273.15 + i 
+    all = Float64[]
+    for j in 1:50
+        p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=0.3, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
+        x0 = fill(0.1, (N+M))
+        prob = ODEProblem(dxx!, x0, tspan, p)
+        sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
+        bm = sol.u[length(sol.t)][1:N]
+        push!(all, length(bm[bm.>1e-7]))
+        # print(i, " °C Completed ",j*2, "% \n")
+    end
+    rich = mean(all);rich_var = var(all)
+    push!(richness, rich); push!(richness_var, rich_var)
+    print(i, " °C Complete, ", "richness ",rich,"\n")
+end 
+
+# richness
+Temp = Any[]
+[append!(Temp, fill(i, 50)) for i in 0:25][1]
+Temp = [float(x) for x in Temp if x isa Number]
+# plot_scatter =scatter(Temp, all, color = :forestgreen, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7)
+richness_all = DataFrame(richness = all)
+relative_all = all./maximum(all)
