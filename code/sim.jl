@@ -175,17 +175,17 @@ y_fit_pre = gaussian(x_fit_pre, best_fit_params)
 
 
 ########################################## all plots #####################
-f = Figure(fontsize = 24, resolution = (1000, 600));
-ax = Axis(f[1,1], title = "MiCRM Prediction vs. EMP Data", xlabel = "Temperature", ylabel = "Relative Richness")
-scatter!(ax, Temp, relative_all, color = :green, markersize = 5, label = "Prediction")
-scatter!(ax, EMP_temp, EMP_relative_rich, color = :orange, markersize = 5, label = "EMP")
-scatter!(ax, x_data, y_data, color = :darkorange, markersize = 10, fillalpha = 0.7)
-scatter!(ax, x_data_pre, y_data_pre, color = :darkgreen, markersize = 10, fillalpha = 0.7)
+f = Figure(fontsize = 30, resolution = (1200, 800));
+ax = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Relative Richness")
+scatter!(ax, Temp, relative_all, color = "#9497C5", markersize = 7, label = "Prediction")
+scatter!(ax, EMP_temp, EMP_relative_rich, color = "#F4D662", markersize = 7, label = "EMP")
+scatter!(ax, x_data, y_data, color = "#F8BA17", markersize = 12, fillalpha = 0.7)
+scatter!(ax, x_data_pre, y_data_pre, color = "#3878C1", markersize = 12, fillalpha = 0.7)
 # Gaussian curves
-lines!(ax, x_fit, y_fit, color = :darkorange, linewidth = 3, label = "EMP_Gaussian")
-lines!(ax, x_fit_pre, y_fit_pre, color = :darkgreen, linewidth = 3, label = "MiCRM_Gaussian")
+lines!(ax, x_fit, y_fit, color = ("#F8BA17", 0.8), linewidth = 5, label = "EMP_Gaussian")
+lines!(ax, x_fit_pre, y_fit_pre, color = ("#3878C1",0.8), linewidth = 5, label = "MiCRM_Gaussian")
 # axislegend(labelsize=10)
-f[1, 2] = Legend(f, ax, framevisible = false, labelsize=16)
+f[1, 2] = Legend(f, ax, framevisible = false, labelsize=20)
 f
 
 CairoMakie.activate!(type = "png")
@@ -225,10 +225,12 @@ for i in range(0, stop = 25, length = 26)
     print(i, " °C Complete, ", "richness ",rich,"\n")
 end 
 
-# richness
-Temp = Any[]
-[append!(Temp, fill(i, 50)) for i in 0:25][1]
-Temp = [float(x) for x in Temp if x isa Number]
-# plot_scatter =scatter(Temp, all, color = :forestgreen, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7)
-richness_all = DataFrame(richness = all)
-relative_all = all./maximum(all)
+# richness plots
+Temp_rich = range(0, 25, length = 26)
+f = Figure(fontsize = 32, resolution = (1200, 900));
+ax = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness")
+lines!(ax, Temp_rich, richness, color = ("#3878C1",0.8), linewidth = 5)
+band!(ax, Temp_rich, richness .- richness_var, richness .+ richness_var, color = ("#3878C1", 0.2))
+f
+
+save("../result/rich_temp.png", f) 
