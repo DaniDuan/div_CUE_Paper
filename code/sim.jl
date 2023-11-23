@@ -9,6 +9,8 @@ using Sundials
 using Parameters
 using CSV, DataFrames
 using CairoMakie
+using LsqFit 
+
 
 # Include simulation code files
 include("micrm_params.jl") # Contains function gereate_params with default sampling scheme
@@ -66,21 +68,21 @@ affect!(integrator) = terminate!(integrator)
 cb = DiscreteCallback(condition, affect!)
 
 all = Float64[]
-richness = Float64[]; richness_var = Float64[]
+richness = Float64[]; richness_err = Float64[]
 for i in range(0, stop = 25, length = 26)
     T = 273.15 + i 
     # all = Float64[]
     for j in 1:50
         p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=0.3, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
-        x0 = fill(0.1, (N+M))
+        x0 = vcat(fill(0.1, N), fill(1, M))
         prob = ODEProblem(dxx!, x0, tspan, p)
         sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
         bm = sol.u[length(sol.t)][1:N]
         push!(all, length(bm[bm.>1e-7]))
         print(i, " °C Completed ",j*2, "% \n")
     end
-    # rich = mean(all);rich_var = var(all)
-    # push!(richness, rich); push!(richness_var, rich_var)
+    # rich = mean(all);rich_err = std(all)/sqrt(length(all))
+    # push!(richness, rich); push!(richness_err, rich_err)
     # print(i, " °C Complete, ", "richness ",rich,"\n")
 end 
 
@@ -89,9 +91,10 @@ Temp = Any[]
 [append!(Temp, fill(i, 50)) for i in 0:25][1]
 Temp = [float(x) for x in Temp if x isa Number]
 # plot_scatter =scatter(Temp, all, color = :forestgreen, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7)
-richness_all = DataFrame(richness = all)
+richness_all = all
 relative_all = all./maximum(all)
-# CSV.write("../data/all.csv", richness_all, writeheader=false)
+# all_save = DataFrame(richness = all)
+# CSV.write("../data/all.csv", all_save, writeheader=false)
 # richness_all = CSV.read("../data/all.csv", DataFrame, header=false)[:,1]
 # relative_all = richness_all./maximum(richness_all)
 ################## reading EMP data ###############################
@@ -120,15 +123,13 @@ for unique_bin in bins
     # Filter rows for bin
     bin_data = filter(row -> row.Temp == unique_bin, filtered_data)
     # Calculate 99% quantile of richness for bin
-    quantile_99_richness = quantile(bin_data.Richness, 0.99)
+    quantile_97_richness = quantile(bin_data.Richness, 0.97)
     # Filter rows with richness above 99% quantile
-    filtered_rows = filter(row -> row.Richness > quantile_99_richness, bin_data)
+    filtered_rows = filter(row -> row.Richness > quantile_97_richness, bin_data)
     append!(filtered_df, filtered_rows)
 end
 println(filtered_df)
 ################################## fitting EMP to gaussian #################################
-using(LsqFit)
-
 gaussian(x, params) = params[1] .* exp.(-(x .- params[2]).^2 ./ (2 * params[3]^2))
 
 initial_params = [1.0, 10, 1.0]
@@ -155,9 +156,9 @@ for unique_bin in bins
     # Filter rows for bin
     bin_data = filter(row -> row.Temp == unique_bin, filtered_pre)
     # Calculate 99% quantile of rich for bin
-    quantile_99_richness = quantile(bin_data.Richness, 0.99)
+    quantile_97_richness = quantile(bin_data.Richness, 0.97)
     # Filter rows with rich above 99% quantile
-    filtered_rows = filter(row -> row.Richness > quantile_99_richness, bin_data)
+    filtered_rows = filter(row -> row.Richness > quantile_97_richness, bin_data)
     append!(filtered_df_pre, filtered_rows)
 end
 
@@ -195,42 +196,77 @@ save("../result/MiCRM_vs_EMP.png", f)
 ####################################################################
 N=100
 M=50
+l_α = 0.3
 ### Temp params 
 # T=15+273.15; 
-ρ_t=[-0.1384 -0.1384]; Tr=273.15+13; Ed=3.5 #[-0.1384 -0.1384]
+# ρ_t=[-0.1384 -0.1384]; # realistic covariance
+Tr=273.15+13; Ed=3.5 #[-0.1384 -0.1384]
 ###################################
 # Generate MiCRM parameters
 tspan = (0.0, 15000.0)
+x0 = vcat(fill(0.1, N), fill(1, M))
 # here we define a callback that terminates integration as soon as system reaches steady state
 condition(du, t, integrator) = norm(integrator(t, Val{1})) <= eps()
 affect!(integrator) = terminate!(integrator)
 cb = DiscreteCallback(condition, affect!)
+num_temps = 26
 
-all = Float64[]
-richness = Float64[]; richness_var = Float64[]
-for i in range(0, stop = 25, length = 26)
+ρ_t = [0.9999 0.9999]
+all = Float64[]; ϵ_sur = Float64[]; ϵ_ext = Float64[]; ϵ_var = Float64[];
+everything = zeros(Float64, num_temps, 8)
+for i in range(0, stop = num_temps-1, length = num_temps)
     T = 273.15 + i 
-    all = Float64[]
+    all = Float64[]; ϵ_sur = Float64[]; ϵ_ext = Float64[]; ϵ_var = Float64[]
     for j in 1:50
-        p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=0.3, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
-        x0 = fill(0.1, (N+M))
+        ## generate params
+        p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=l_α, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
+        ## Calc CUE
+        ϵ = (p.u * x0[N+1:N+M] .* (1-l_α) .- p.m) ./ (p.u * x0[N+1:N+M])
+        ## run simulation
         prob = ODEProblem(dxx!, x0, tspan, p)
         sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
         bm = sol.u[length(sol.t)][1:N]
         push!(all, length(bm[bm.>1e-7]))
-        # print(i, " °C Completed ",j*2, "% \n")
+        append!(ϵ_sur, ϵ[bm.>1e-7]); append!(ϵ_ext, ϵ[bm.<=1e-7])
+        push!(ϵ_var, log(var(ϵ)))
     end
-    rich = mean(all);rich_var = var(all)
-    push!(richness, rich); push!(richness_var, rich_var)
+    rich = mean(all);rich_err = std(all)/sqrt(length(all))
+    everything[Int(i+1),:] = [rich, rich_err, mean(ϵ_sur), std(ϵ_sur)/sqrt(length(ϵ_sur)), mean(ϵ_ext), std(ϵ_ext)/sqrt(length(ϵ_ext)), mean(ϵ_var), std(ϵ_var)/sqrt(length(ϵ_var))]
     print(i, " °C Complete, ", "richness ",rich,"\n")
 end 
 
+col_names = ["richness", "richness_err", "ϵ_sur_mean", "ϵ_sur_err", "ϵ_ext_mean", "ϵ_ext_err", "ϵ_var_mean", "ϵ_var_err"]
+everything = DataFrame(everything, col_names)
+# CSV.write("../data/temp_gradient.csv", everything, writeheader=false)
+# everything = CSV.read("../data/temp_gradient.csv", DataFrame, header=false)
+# rename!(everything, col_names)
+
 # richness plots
-Temp_rich = range(0, 25, length = 26)
-f = Figure(fontsize = 32, resolution = (1200, 900));
-ax = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness")
-lines!(ax, Temp_rich, richness, color = ("#3878C1",0.8), linewidth = 5)
-band!(ax, Temp_rich, richness .- richness_var, richness .+ richness_var, color = ("#3878C1", 0.2))
+Temp_rich = range(0, num_temps-1, length = num_temps)
+f = Figure(fontsize = 35, resolution = (1200, 900));
+# ax = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness")
+ax1 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness", xlabelsize = 50, ylabelsize = 50, ygridvisible = false, xgridvisible = false)
+ax2 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "CUE Variance (log)", xlabelsize = 50, ylabelsize = 50, yaxisposition = :right, yticklabelalign = (:left, :center), xticklabelsvisible = false, xlabelvisible = false)
+lines!(ax1, Temp_rich, everything.richness, color = ("#6B8EDE",0.8), linewidth = 5, label = "Richness")
+band!(ax1, Temp_rich, everything.richness .- everything.richness_err, everything.richness .+ everything.richness_err, color = ("#6B8EDE", 0.2))
+lines!(ax2, Temp_rich, everything.ϵ_var_mean, color = ("#EF8F8C", 0.8), linewidth = 5, label = "CUE Variance")
+band!(ax2, Temp_rich,  everything.ϵ_var_mean .- everything.ϵ_var_err, everything.ϵ_var_mean .+ everything.ϵ_var_err, color = ("#EF8F8C", 0.2))
+linkxaxes!(ax1,ax2)
+l1 = [LineElement(color = ("#6B8EDE",0.8), linestyle = nothing, linewidth = 5)]
+l2 = [LineElement(color = ("#EF8F8C", 0.8), linestyle = nothing, linewidth = 5)]
+Legend(f[1,1], [l1, l2], tellheight = false, tellwidth = false, ["Richness", "CUE Variance"], halign = :left, valign = :top)
 f
 
-save("../result/rich_temp.png", f) 
+save("../result/11.png", f) 
+
+# save("../result/rich_temp.png", f) 
+
+# f = Figure(fontsize = 32, resolution = (1200, 900));
+# ax = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "CUE")
+# lines!(ax, Temp_rich, everything.ϵ_sur_mean, color = ("#EF8F8C",1), linewidth = 5, label = "Survivor")
+# band!(ax, Temp_rich, everything.ϵ_sur_mean .- everything.ϵ_sur_err , everything.ϵ_sur_mean .+ everything.ϵ_sur_err , color = ("#EF8F8C", 0.2))
+# lines!(ax, Temp_rich, everything.ϵ_ext_mean, color = ("#4F363E", 0.6), linewidth = 5, label = "Extinct")
+# band!(ax, Temp_rich,  everything.ϵ_ext_mean .- everything.ϵ_ext_err, everything.ϵ_ext_mean .+ everything.ϵ_ext_err, color = ("#4F363E", 0.2))
+# axislegend(position = :rb)
+# f
+# save("../result/CUE_temp.png", f) 

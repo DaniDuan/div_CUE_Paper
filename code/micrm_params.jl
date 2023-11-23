@@ -47,5 +47,3 @@ function generate_params(N, M; f_m=def_m, f_ρ=def_ρ, f_ω=def_ω, f_u=def_u, f
 
      return out #(N=N, M=M, u=u, m=m, l=l, ρ=ρ, ω=ω, λ=λ)
  end
-
-#, kw=NamedTuple(zip(key(kwargs), values(kwargs)))
