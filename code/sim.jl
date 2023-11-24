@@ -105,14 +105,6 @@ EMP_temp = EMP_data[:, "Temp"]
 EMP = [EMP_temp EMP_relative_rich]
 # scatter!(EMP_temp, EMP_relative_rich, color = :darkorange, markerstrokecolor = nothing, markershape = Shape(Plots.partialcircle(0, 2π)),  markersize = 5, fillalpha = 0.7, label = "EMP")
 
-# quan = DataFrame()
-# for i in unique(EMP_data[:, "Temp"])
-#     sub = filter(:Temp => n -> n == i, EMP_data)
-#     quantile_99 = quantile(sub.relative_rich, 0.99)
-#     filtered_df = filter(row -> row.relative_rich > quantile_99, sub)
-#     quan = vcat(quan, filtered_df)
-# end 
-
 ################### binning by integers of temp ##############
 filtered_data = copy(EMP_data)
 filtered_data.Temp = round.(Int, filtered_data.Temp)
@@ -211,7 +203,7 @@ affect!(integrator) = terminate!(integrator)
 cb = DiscreteCallback(condition, affect!)
 num_temps = 26
 
-ρ_t = [0.9999 0.9999]
+ρ_t = [0.0 0.0]
 all = Float64[]; ϵ_sur = Float64[]; ϵ_ext = Float64[]; ϵ_var = Float64[];
 everything = zeros(Float64, num_temps, 8)
 for i in range(0, stop = num_temps-1, length = num_temps)
@@ -245,8 +237,8 @@ everything = DataFrame(everything, col_names)
 Temp_rich = range(0, num_temps-1, length = num_temps)
 f = Figure(fontsize = 35, resolution = (1200, 900));
 # ax = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness")
-ax1 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness", xlabelsize = 50, ylabelsize = 50, ygridvisible = false, xgridvisible = false)
-ax2 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "CUE Variance (log)", xlabelsize = 50, ylabelsize = 50, yaxisposition = :right, yticklabelalign = (:left, :center), xticklabelsvisible = false, xlabelvisible = false)
+ax1 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Richness", limits = (nothing, nothing, 2.5, 15.5), xlabelsize = 50, ylabelsize = 50, ygridvisible = false, xgridvisible = false)
+ax2 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "CUE Variance (log)", limits = (nothing, nothing, -7.5, 1.2), xlabelsize = 50, ylabelsize = 50, yaxisposition = :right, yticklabelalign = (:left, :center), xticklabelsvisible = false, xlabelvisible = false)
 lines!(ax1, Temp_rich, everything.richness, color = ("#6B8EDE",0.8), linewidth = 5, label = "Richness")
 band!(ax1, Temp_rich, everything.richness .- everything.richness_err, everything.richness .+ everything.richness_err, color = ("#6B8EDE", 0.2))
 lines!(ax2, Temp_rich, everything.ϵ_var_mean, color = ("#EF8F8C", 0.8), linewidth = 5, label = "CUE Variance")
@@ -257,7 +249,7 @@ l2 = [LineElement(color = ("#EF8F8C", 0.8), linestyle = nothing, linewidth = 5)]
 Legend(f[1,1], [l1, l2], tellheight = false, tellwidth = false, ["Richness", "CUE Variance"], halign = :left, valign = :top)
 f
 
-save("../result/11.png", f) 
+save("../result/00.png", f) 
 
 # save("../result/rich_temp.png", f) 
 
@@ -270,3 +262,96 @@ save("../result/11.png", f)
 # axislegend(position = :rb)
 # f
 # save("../result/CUE_temp.png", f) 
+
+
+########################### u & m ###############################
+N=100
+M=50
+L = 0.3
+### Temp params 
+# T=15+273.15; 
+# ρ_t=[-0.1384 -0.1384]; # realistic covariance
+Tr=273.15+13; Ed=3.5 #[-0.1384 -0.1384]
+###################################
+# Generate MiCRM parameters
+tspan = (0.0, 15000.0)
+x0 = vcat(fill(0.1, N), fill(1, M))
+# here we define a callback that terminates integration as soon as system reaches steady state
+condition(du, t, integrator) = norm(integrator(t, Val{1})) <= eps()
+affect!(integrator) = terminate!(integrator)
+cb = DiscreteCallback(condition, affect!)
+num_temps = 26
+
+ρ_t = [-0.9999 -0.9999]
+Temp_rich = range(0, num_temps-1, length = num_temps)
+f = Figure(fontsize = 35, resolution = (2400, 900));
+ax1 = Axis(f[1,1], xlabel = "log(Bᵤ)", ylabel = "Eᵤ", xlabelsize = 50, ylabelsize = 50)
+ax2 = Axis(f[1,2], xlabel = "Temperature (°C)", ylabel = "Uptake (log)", xlabelsize = 50, ylabelsize = 50)
+ax3 = Axis(f[2,1], xlabel = "log(Bₘ)", ylabel = "Eₘ", xlabelsize = 50, ylabelsize = 50)
+ax4 = Axis(f[2,2], xlabel = "Temperature (°C)", ylabel = "Respiration (log)", xlabelsize = 50, ylabelsize = 50)
+T = range(273.15, 273.15+num_temps-1, length = num_temps)
+k = 0.0000862 # Boltzman constant
+B0 = [log((0.138/(1 - L - 0.22)) * exp((-0.82/k) * ((1/Tr)-(1/273.15)))/(1 + (0.82/(Ed - 0.82)) * exp(Ed/k * (1/308.15 - 1/Tr)))) log(0.138 *exp((-0.67/k) * ((1/Tr)-(1/273.15)))/(1 + (0.67/(Ed - 0.67)) * exp(Ed/k * (1/311.15 - 1/Tr))))]# Using CUE0 = 0.22, mean growth rate = 0.48
+B0_var = 0.17*abs.(B0); E_mean = [0.82 0.67]; E_var =  0.14*abs.(E_mean)
+cov_xy = ρ_t .* B0_var.^0.5 .* E_var .^ 0.5
+meanv = [B0 ; E_mean]
+cov_u = [B0_var[1] cov_xy[1]; cov_xy[1] E_var[1]]
+cov_m = [B0_var[2] cov_xy[2]; cov_xy[2] E_var[2]]
+for i in 1:N
+    allu = rand(MvNormal(meanv[:,1], cov_u), 1)
+    allm = rand(MvNormal(meanv[:,2], cov_m), 1)
+    B = [exp.(allu[1,:]) exp.(allm[1,:])]
+    E = [allu[2,:] allm[2,:]]
+    Tpu = 273.15 .+ rand(Normal(35, 5), 1)
+    Tpm = Tpu .+ 3
+    Tp = [Tpu Tpm]
+    temp_p = log.(B .* exp.((-E./k) .* ((1 ./T) .-(1/Tr)))./(1 .+ (E./(Ed .- E)) .* exp.(Ed/k .* (1 ./Tp .- 1 ./T))))
+    scatter!(ax1, log.(B)[1], E[1], color = ("#FA8328", 1), markersize = 20)
+    lines!(ax2, Temp_rich, temp_p[:,1], color = ("#FA8328",0.75), linewidth = 1)
+    scatter!(ax3, log.(B)[2], E[2], color = ("#015845", 1), markersize = 20)
+    lines!(ax4, Temp_rich, temp_p[:,2], color = ("#015845",0.75), linewidth = 1)
+end
+f
+save("../result/U_R_var_-1.png", f) 
+
+
+################### ϵ vs. R* ###############################
+N=100
+M=50
+l_α = 0.3
+### Temp params 
+# T=15+273.15; 
+ρ_t=[-0.1384 -0.1384]; # realistic covariance [-0.1384 -0.1384]
+Tr=273.15+13; Ed=3.5 
+###################################
+# Generate MiCRM parameters
+tspan = (0.0, 15000.0)
+x0 = vcat(fill(0.1, N), fill(1, M))
+# here we define a callback that terminates integration as soon as system reaches steady state
+condition(du, t, integrator) = norm(integrator(t, Val{1})) <= eps()
+affect!(integrator) = terminate!(integrator)
+cb = DiscreteCallback(condition, affect!)
+num_temps = 26
+
+ϵ_sur = Float64[]; ϵ_ext = Float64[]; R_sur = Float64[]; R_ext = Float64[]
+T = 273.15 + 15
+## generate params
+p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=l_α, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
+## Calc CUE
+ϵ = (p.u * x0[N+1:N+M] .* (1-l_α) .- p.m) ./ (p.u * x0[N+1:N+M])
+Rs = p.m ./(p.u * x0[N+1:N+M] .* (1-l_α))
+## run simulation
+prob = ODEProblem(dxx!, x0, tspan, p)
+sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
+bm = sol.u[length(sol.t)][1:N] 
+ϵ_sur= ϵ[bm.>1e-7]; ϵ_ext= ϵ[bm.<=1e-7]; R_sur= Rs[bm.>1e-7]; R_ext= Rs[bm.<=1e-7]
+
+# plots
+f = Figure(fontsize = 35, resolution = (1200, 900));
+ax = Axis(f[1,1], xlabel = "CUE", ylabel = "R*", xlabelsize = 50, ylabelsize = 50)
+scatter!(ax, ϵ_ext, R_ext, color = ("#4F363E", 0.4), markersize = 25, label = "Extinct")
+scatter!(ax, ϵ_sur, R_sur, color = ("#EF8F8C",1), marker = :star4, markersize = 25, label = "Survivor")
+axislegend(position = :rt)
+f
+
+save("../result/CUE_R.png", f) 
