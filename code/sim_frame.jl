@@ -3,7 +3,7 @@
 # Load libraries
 using Distributions
 using LinearAlgebra
-using DifferentialEquations  #pkg> add DifferentialEquations@6.20.0
+using DifferentialEquations
 # using Plots, StatsPlots
 using Sundials
 using Parameters
@@ -19,6 +19,8 @@ include("dx_v2.jl") # Defines differential equations for MiCRM integration use d
 include("LV_dx.jl") # Defines LV differential equatons, use LV_dx
 
 include("temp.jl")
+
+include("EFF_LV_p_opt.jl")
 
 ####################################################################################################################################################################################
 function F_m(N, M, kw)
