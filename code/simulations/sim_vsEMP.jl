@@ -14,7 +14,7 @@ affect!(integrator) = terminate!(integrator)
 cb = DiscreteCallback(condition, affect!)
 
 all = Float64[]
-richness = Float64[]; richness_err = Float64[]
+# richness = Float64[]; richness_err = Float64[]
 for i in range(0, stop = 25, length = 26)
     T = 273.15 + i 
     # all = Float64[]
