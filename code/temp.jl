@@ -8,17 +8,18 @@ function temp_trait(N, kw)
     @unpack T, Tr, Ed= kw
     B,E,Tp = randtemp_param(N, kw)
     temp_p = B .* exp.((-E./k) * ((1/T)-(1/Tr)))./(1 .+ (E./(Ed .- E)) .* exp.(Ed/k * (1 ./Tp .- 1/T)))
-    Eϵ = (B[:,2] .* (E[:,1] .- E[:,2]))./(B[:,1]*(1-L)-B[:,2])  #m0(Eu − Em)/(u0(1 − l) − m0)
-    return temp_p,Eϵ
+    # Eϵ = (B[:,2] .* (E[:,1] .- E[:,2]))./(B[:,1]*(1-L)-B[:,2])  #m0(Eu − Em)/(u0(1 − l) − m0)
+    return temp_p#,Eϵ
 end
 
 # function randtemp_param(N; ρ_t =  [-1.0 -1.0], Tr= 273.15+13, Ed= 3.5, L=0.4)
 function randtemp_param(N, kw)
-    @unpack T, ρ_t, Tr, Ed, L = kw
+    @unpack T, ρ_t, Tr, Ed = kw
     ρ_t[ρ_t .== 1.0] .= 1-eps()
     ρ_t[ρ_t .== -1.0] .= -1+eps()
     k = 0.0000862 # Boltzman constant
-    B0 = [log((0.138/(1 - L - 0.22)) * exp((-0.82/k) * ((1/Tr)-(1/273.15)))/(1 + (0.82/(Ed - 0.82)) * exp(Ed/k * (1/308.15 - 1/Tr)))) log(0.138 *exp((-0.67/k) * ((1/Tr)-(1/273.15)))/(1 + (0.67/(Ed - 0.67)) * exp(Ed/k * (1/311.15 - 1/Tr))))]# Using CUE0 = 0.22, mean growth rate = 0.48
+    B0 = [log(0.2875 * exp((-0.82/k) * ((1/Tr)-(1/273.15)))/(1 + (0.82/(Ed - 0.82)) * exp(Ed/k * (1/308.15 - 1/Tr)))) log(0.138 *exp((-0.67/k) * ((1/Tr)-(1/273.15)))/(1 + (0.67/(Ed - 0.67)) * exp(Ed/k * (1/311.15 - 1/Tr))))]# Using CUE0 = 0.22, mean growth rate = 0.48
+    # Here setting B0_u = 0.138/(1 - L - 0.22) = 0.2875, with L = 0.3
     B0_var = 0.17*abs.(B0); E_mean = [0.82 0.67]; E_var =  0.14*abs.(E_mean)
     cov_xy = ρ_t .* B0_var.^0.5 .* E_var .^ 0.5
     meanv = [B0 ; E_mean]
