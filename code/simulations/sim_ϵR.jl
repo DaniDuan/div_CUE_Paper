@@ -7,7 +7,7 @@ l_α = 0.3
 ### Temp params 
 # T=15+273.15; 
 ρ_t=[-0.1384 -0.1384]; # realistic covariance [-0.1384 -0.1384]
-Tr=273.15+13; Ed=3.5 
+Tr=273.15+10; Ed=3.5 
 ###################################
 # Generate MiCRM parameters
 tspan = (0.0, 15000.0)
@@ -16,10 +16,10 @@ x0 = vcat(fill(0.1, N), fill(1, M))
 condition(du, t, integrator) = norm(integrator(t, Val{1})) <= eps()
 affect!(integrator) = terminate!(integrator)
 cb = DiscreteCallback(condition, affect!)
-num_temps = 26
+num_temps = 31
 
 ϵ_sur = Float64[]; ϵ_ext = Float64[]; R_sur = Float64[]; R_ext = Float64[]
-T = 273.15 + 15
+T = 273.15 + 13
 ## generate params
 p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, L=l_α, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
 ## Calc CUE
