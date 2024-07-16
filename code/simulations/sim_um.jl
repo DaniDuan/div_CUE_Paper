@@ -5,9 +5,7 @@ N=100
 M=50
 L = 0.3
 ### Temp params 
-# T=15+273.15; 
-# ρ_t=[-0.1384 -0.1384]; # realistic covariance
-Tr=273.15+10; Ed=3.5 #[-0.1384 -0.1384]
+Tr=273.15+10; Ed=3.5
 ###################################
 # Generate MiCRM parameters
 tspan = (0.0, 15000.0)
@@ -50,7 +48,7 @@ end
 f
 
 ############### Plotting u+m and CUE #############
-ρ_t=[-0.1384 -0.1384]
+ρ_t=[-0.3500 -0.3500]
 num_temps = 31
 Temp_rich = range(0, num_temps-1, length = num_temps)
 T = Temp_rich .+ 273.15
@@ -61,7 +59,7 @@ cov_xy = ρ_t .* B0_var.^0.5 .* E_var .^ 0.5
 meanv = [B0 ; E_mean]
 cov_u = [B0_var[1] co v_xy[1]; cov_xy[1] E_var[1]]
 cov_m = [B0_var[2] cov_xy[2]; cov_xy[2] E_var[2]]
-Random.seed!(666) # unimodal CUE
+# Random.seed!(666) # unimodal CUE
 # Random.seed!(1) # decrease
 # Random.seed!(6) # increase
 allu = rand(MvNormal(meanv[:,1], cov_u), 1)
@@ -117,21 +115,41 @@ for i in 1:N
     push!(Tpϵ, T[argmax(ϵ[i,:])])
 end 
 
-# plot(T, ϵ[1,:])
-
-# # Initial parameter guesses
-# u0, m0 = B; Eu, Em = E
-
-# ϵ0 = (u0[i] *(1-L) - m0[i])/u0[i]
-# Eϵ = (m0[i]*(Eu[i] - Em[i]))/(u0[i]*(1-L) - m0[i])
-# ED = 3.5
-# Tp = (Tpu[i] + Tpm[i])/2
-
-# p0 = [ϵ0, Eϵ, ED, Tp]
-
-# # Perform the fit
-# fit = curve_fit(temp_SS, T, ϵ[i,:], p0)
-
 # save("../result/U_R_var_-1.png", f) 
 
 
+
+ρ_t= [-0.3500, -0.3500] #[-0.1384 -0.1384]
+num_temps = 31
+Temp_rich = range(0, num_temps-1, length = num_temps)
+T = Temp_rich .+ 273.15
+k = 0.0000862 # Boltzman constant
+B0 = [log(0.2875 * exp((-0.82/k) * ((1/Tr)-(1/273.15)))/(1 + (0.82/(Ed - 0.82)) * exp(Ed/k * (1/308.15 - 1/Tr)))) log(0.138 *exp((-0.67/k) * ((1/Tr)-(1/273.15)))/(1 + (0.67/(Ed - 0.67)) * exp(Ed/k * (1/311.15 - 1/Tr))))]# Using CUE0 = 0.22, mean growth rate = 0.48
+# Here setting B0_u = 0.138/(1 - L - 0.22) = 0.2875, with L = 0.3
+B0_var = 0.17*abs.(B0); E_mean = [0.82 0.67]; E_var =  0.14*abs.(E_mean)
+cov_xy = ρ_t .* B0_var.^0.5 .* E_var .^ 0.5
+meanv = [B0 ; E_mean]
+cov_u = [B0_var[1] cov_xy[1]; cov_xy[1] E_var[1]]
+cov_m = [B0_var[2] cov_xy[2]; cov_xy[2] E_var[2]]
+allu = rand(MvNormal(meanv[:,1], cov_u), N)
+allm = rand(MvNormal(meanv[:,2], cov_m), N)
+B = [exp.(allu[1,:]) exp.(allm[1,:])]
+E = [allu[2,:] allm[2,:]]
+cov_value = cov(allu[1,:], E[:,1])/(var(allu[1,:]).^0.5 .* var(E[:,1]) .^ 0.5)
+
+# 
+f = Figure(fontsize = 35, resolution = (1200, 900));
+ax = Axis(f[1,1], xlabel = "log(B0)", ylabel = "E", xlabelsize = 50, ylabelsize = 50)
+scatter!(ax, allu[1,:], allu[2,:], color = ("#FA8328", 1), markersize = 25, label = "Resource uptake rate")
+axislegend(position = :rt)
+Label(f[1,1, TopLeft()], "(a)")
+f
+save("../result/Bu_Ea_em.png", f) 
+
+f = Figure(fontsize = 35, resolution = (1200, 900));
+ax = Axis(f[1,1], xlabel = "log(B0)", ylabel = "E", xlabelsize = 50, ylabelsize = 50)
+scatter!(ax, allm[1,:], allm[2,:], color = ("#015845", 1), markersize = 25, label = "Respiration rate")
+axislegend(position = :rt)
+Label(f[1,1, TopLeft()], "(b)")
+f
+save("../result/Bm_Ea_em.png", f) 
