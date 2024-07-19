@@ -72,10 +72,10 @@ for unique_bin in bins
     # mean_bin_data = mean(relative_bin_data)
     # err_bin_data = std(relative_bin_data)/sqrt(length(relative_bin_data))
 
-    # Calculate 99% quantile of richness for bin
-    quantile_99_richness = quantile(bin_data.Richness, 0.99)
-    # Filter rows with richness above 99% quantile
-    filtered_rows = filter(row -> row.Richness > quantile_99_richness, bin_data)
+    # Calculate 97% quantile of richness for bin
+    quantile_97_richness = quantile(bin_data.Richness, 0.97)
+    # Filter rows with richness above 97% quantile
+    filtered_rows = filter(row -> row.Richness > quantile_97_richness, bin_data)
     append!(filtered_df, filtered_rows)
     # EMP_meanerr[Int(n),:] = [unique_bin, mean(relative_bin_data), std(relative_bin_data)/sqrt(length(relative_bin_data))]
 end
@@ -132,7 +132,7 @@ linkxaxes!(ax,ax1)
 l1 = [LineElement(color = ("#F8BA17",0.8), linestyle = nothing, linewidth = 5)]
 s1 = [MarkerElement(color = ("#F8BA17", 0.8), markersize = 12, marker = :circle)]
 l2 = [LineElement(color =("#6B8EDE",0.8), linestyle = nothing, linewidth = 5)]
-Legend(f[1,1], [s1, l1, l2], tellheight = false, tellwidth = false, ["EMP data (99% quantile)","EMP Gaussian fit", "MCM prediction"], halign = :right, valign = :top)
+Legend(f[1,1], [s1, l1, l2], tellheight = false, tellwidth = false, ["EMP data (97% quantile)","EMP Gaussian fit", "MCM prediction"], halign = :right, valign = :top)
 f
 
 CairoMakie.activate!(type = "png")
