@@ -13,13 +13,10 @@ end
 
 function randtemp_param(N, kw)
     @unpack T, ρ_t, Tr, Ed = kw
-    ρ_t[ρ_t .== 1.0] .= 1-eps()
-    ρ_t[ρ_t .== -1.0] .= -1+eps()
     k = 0.0000862 # Boltzman constant
-    # Here setting B0_u = m0 /(1 - L - CUE_0) = 0.2875
-    # with L = 0.3, mean(m0) = 0.138, CUE_0 = 0.22
-    B0 = [log(0.2875 * exp((-0.82/k) * ((1/Tr)-(1/273.15)))/(1 + (0.82/(Ed - 0.82)) * exp(Ed/k * (1/308.15 - 1/Tr)))) log(0.138 *exp((-0.67/k) * ((1/Tr)-(1/273.15)))/(1 + (0.67/(Ed - 0.67)) * exp(Ed/k * (1/311.15 - 1/Tr))))]# Using CUE0 = 0.22, mean growth rate = 0.48
-    B0_var = 0.17*abs.(B0); E_mean = [0.82 0.67]; E_var =  0.14*abs.(E_mean)
+    # Here setting B0_u = m0 /(1 - L - CUE_0) with L = 0.3
+    B0 = [-0.8116 -1.4954]
+    B0_var = 0.17 .* abs.(B0); E_mean = [0.8146 0.5741]; E_var =  0.1364 .* E_mean
     cov_xy = ρ_t .* B0_var.^0.5 .* E_var .^ 0.5
     meanv = [B0 ; E_mean]
     cov_u = [B0_var[1] cov_xy[1]; cov_xy[1] E_var[1]]

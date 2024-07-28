@@ -9,14 +9,18 @@ library(progress)
 df_meta <- read.csv("../data/database.csv") %>%
     filter(StandardisedTraitName == "Specific Growth Rate") %>%
     select(Strain = OriginalID,growth_rate = StandardisedTraitValue,Temperature = ConTemp)  %>%
-    mutate(source = "meta")
+    mutate(source = "growth")
 
-df_experiments <- read.csv("../data/dataset_rates.csv") %>%
-    select(Strain,growth_rate,Temperature) %>%
-    mutate(source = "exp") 
+df_res <- read.csv("../data/database.csv") %>%
+  filter(StandardisedTraitName != "Specific Growth Rate") %>%
+  select(Strain = OriginalID,growth_rate = StandardisedTraitValue,Temperature = ConTemp)  %>%
+  mutate(source = "res")
+# df_experiments <- read.csv("../data/dataset_rates.csv") %>%
+#     select(Strain,growth_rate,Temperature) %>%
+#     mutate(source = "exp") 
 
 #bind
-df_full <- full_join(df_meta, df_experiments) %>%
+df_full <- full_join(df_meta, df_res) %>%
     filter(growth_rate > 0.0)
 
 #plot all data
@@ -39,7 +43,7 @@ pb <- progress::progress_bar$new(total = number_of_curves*number_of_models,
                                  format ="[:bar] :percent :elapsedfull")
 
 df_nested <- df_nested %>%
-    mutate(E_lm = 0.0, B0_lm = 0.0, E_ss = 0.0, B0_ss = 0.0)
+    mutate(E_lm = 0.0, B0_lm = 0.0, E_ss = 0.0, B0_ss = 0.0, Tpk = 0.0, Ed = 0.0)
 
 for(i in 1:nrow(df_nested)){
     
@@ -95,6 +99,8 @@ for(i in 1:nrow(df_nested)){
                 if (all(x$p.value < 0.05)) {
                     df_nested$B0_ss[i] <- coef(ss_mod)[1]
                     df_nested$E_ss[i] <- coef(ss_mod)[2]
+                    df_nested$Ed[i] <- coef(ss_mod)[3]
+                    df_nested$Tpk[i] <- coef(ss_mod)[4]
                 }
             }
         }

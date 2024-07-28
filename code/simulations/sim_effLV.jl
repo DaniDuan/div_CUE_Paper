@@ -1,4 +1,4 @@
-include("../sim_frame.jl");
+include("./sim_frame.jl");
 
 N=100
 M=50
@@ -28,10 +28,9 @@ sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
 all_ℵ = p_lv.ℵ
 all_r = p_lv.r
 
-# mean_ℵ = mean([all_ℵ[i, j] for i in 1:N for j in 1:N if i != j])/mean(diag(all_ℵ)) 
 N_sur = sum(all_r .> 0)
 sur_ℵ = all_ℵ[all_r.>0, all_r.>0]
-mean_ℵ = mean([sur_ℵ[i, j] for i in 1:N_sur for j in 1:N_sur if i != j])/mean(diag(sur_ℵ))
+mean_ℵ = mean([sur_ℵ[i, j]/diag(sur_ℵ)[i] for i in 1:N_sur for j in 1:N_sur if i != j])
 sur_r = all_r[all_r.>0]
 mean_r = mean(sur_r) 
 
@@ -108,7 +107,7 @@ all = Float64[]; all_pred = Float64[]
             all_ℵ = p_lv.ℵ; all_r = p_lv.r
             N_sur = sum(all_r .> 0) 
             sur_ℵ = all_ℵ[all_r.>0, all_r.>0]  # eliminate all species with r<0
-            mean_ℵ = mean([sur_ℵ[i, j] for i in 1:N_sur for j in 1:N_sur if i != j])/mean(diag(sur_ℵ))
+            mean_ℵ = mean([sur_ℵ[i, j]/diag(sur_ℵ)[i] for i in 1:N_sur for j in 1:N_sur if i != j])
             sur_r = all_r[all_r.>0] 
             mean_r = mean(sur_r) 
             pred = sum(sur_r .> ((N_sur - 1)* mean_ℵ)*mean_r/(1+(N_sur-1)*mean_ℵ)) # upper bound for the number of survivors
