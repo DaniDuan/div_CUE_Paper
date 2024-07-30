@@ -17,11 +17,14 @@ cb = DiscreteCallback(condition, affect!)
 num_temps = 31
 
 # ρ_t = [0.0000 0.0000]
-everything = zeros(Float64, num_temps, 20)
-@time for i in range(30, stop = 30, length = 1)
+everything = zeros(Float64, num_temps, 40)
+@time for i in range(0, stop = 30, length = 31)
         T = 273.15 + i 
-        all = Float64[]; ϵ_sur = Float64[]; ϵ_ext = Float64[]; feas = Float64[]; ELV = Float64[]; #Eϵ_sur = Float64[]; Eϵ_ext = Float64[]; 
-        ϵ_var = Float64[]; u_sur = Float64[]; u_ext = Float64[]; m_sur = Float64[]; m_ext = Float64[]
+        all_rich = Float64[]; ϵ_sur = Float64[]; ϵ_ext = Float64[]; all_ϵ = Float64[]; all_ϵ_r0 = Float64[]; 
+        feas = Float64[]; ELV = Float64[]; #Eϵ_sur = Float64[]; Eϵ_ext = Float64[]; 
+        ϵ_var = Float64[]; u_sur = Float64[]; u_ext = Float64[]; m_sur = Float64[]; m_ext = Float64[];
+        all_Eu = Float64[]; all_Em = Float64[]; all_Eu_sur = Float64[]; all_Em_sur = Float64[]; 
+        all_Tpu = Float64[]; all_Tpm = Float64[]; all_Tpu_sur = Float64[]; all_Tpm_sur = Float64[]
         for j in 1:500
             ## generate params
             p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
@@ -31,14 +34,21 @@ everything = zeros(Float64, num_temps, 20)
             prob = ODEProblem(dxx!, x0, tspan, p)
             sol =solve(prob, AutoVern7(Rodas5()), save_everystep = false, callback=cb)
             bm = sol.u[length(sol.t)][1:N]
+            sur = (1:N)[bm .> 1.0e-7]
+            ## collecting E and Tp
+            Eu, Em = p.E
+            Eu_sur, Em_sur = p.E[sur,:]
+            Tpu, Tpm = p.Tp
+            Tpu_sur, Tpm_sur = p.Tp[sur,:]
             ###
             p_lv = Eff_LV_params(p=p, sol=sol);
             ## Making prediction based on Tom's paper
-            all_ℵ = p_lv.ℵ; all_r = p_lv.r
-            N_sur = sum(all_r .> 0) 
-            sur_ℵ = all_ℵ[all_r.>0, all_r.>0]  # eliminate all species with r<0
+            r0 = (1:N)[p_lv.r .> 0]
+            N_sur = length(r0) 
+            ϵ_r0 = ϵ[r0]
+            sur_ℵ = p_lv.ℵ[r0, r0]  # eliminate all species with r<0
             mean_ℵ = mean([sur_ℵ[i, j]/diag(sur_ℵ)[i] for i in 1:N_sur for j in 1:N_sur if i != j])
-            sur_r = all_r[all_r.>0] 
+            sur_r = p_lv.r[r0] 
             mean_r = mean(sur_r) 
             pred = sum(sur_r .> ((N_sur - 1)* mean_ℵ)*mean_r/(1+(N_sur-1)*mean_ℵ)) # upper bound for the number of survivors
             ## running LV
@@ -47,21 +57,30 @@ everything = zeros(Float64, num_temps, 20)
             bm_LV = sol_LV.u[length(sol_LV.t)][1:N]
             pred_LV = sum(bm_LV.>1e-7)
             ###
-            push!(all, sum(bm.>1e-7)); push!(feas, pred); push!(ELV, pred_LV)
-            append!(ϵ_sur, ϵ[bm.>1e-7]); append!(ϵ_ext, ϵ[bm.<=1e-7]) #CUE
-            append!(u_sur, sum(p.u, dims = 2)[bm.>1e-7]); append!(u_ext, sum(p.u, dims = 2)[bm.<=1e-7])
-            append!(m_sur, p.m[bm.>1e-7]); append!(m_ext, p.m[bm.<=1e-7])
-            push!(ϵ_var, log(var(ϵ)))
+            push!(all_rich, length(sur)); push!(feas, pred); push!(ELV, pred_LV);
+            append!(ϵ_sur, ϵ[sur]); append!(ϵ_ext, ϵ[sur]); 
+            append!(all_ϵ, ϵ); push!(ϵ_var, log(var(ϵ))); append!(all_ϵ_r0, ϵ_r0); #CUE
+            append!(all_Eu, Eu); append!(all_Em, Em); append!(all_Eu_sur, Eu_sur); append!(all_Em_sur, Em_sur); #Eu Em
+            append!(all_Tpu, Tpu); append!(all_Tpm, Tpm); append!(all_Tpu_sur, Tpu_sur); append!(all_Tpm_sur, Tpm_sur); #Tp
+            append!(u_sur, sum(p.u, dims = 2)[sur]); append!(u_ext, sum(p.u, dims = 2)[sur]);
+            append!(m_sur, p.m[sur]); append!(m_ext, p.m[sur])
         end
-        everything[Int(i+1),:] = [mean(all), std(all)/sqrt(length(all)), mean(feas), std(feas)/sqrt(length(feas)), mean(ELV), std(ELV)/sqrt(length(ELV)),
-            mean(ϵ_sur), std(ϵ_sur)/sqrt(length(ϵ_sur)), mean(ϵ_ext), std(ϵ_ext)/sqrt(length(ϵ_ext)), mean(ϵ_var), std(ϵ_var)/sqrt(length(ϵ_var)), 
+        everything[Int(i+1),:] = [mean(all_rich), std(all_rich)/sqrt(length(all_rich)), mean(feas), std(feas)/sqrt(length(feas)), mean(ELV), std(ELV)/sqrt(length(ELV)),
+            mean(ϵ_sur), std(ϵ_sur)/sqrt(length(ϵ_sur)), mean(ϵ_ext), std(ϵ_ext)/sqrt(length(ϵ_ext)), 
+            mean(ϵ), std(ϵ)/sqrt(length(ϵ)), mean(ϵ_var), std(ϵ_var)/sqrt(length(ϵ_var)), mean(all_ϵ_r0), std(all_ϵ_r0)/sqrt(length(all_ϵ_r0)),
+            mean(all_Eu), std(all_Eu)/sqrt(length(all_Eu)), mean(all_Em), std(all_Em)/sqrt(length(all_Em)),
+            mean(all_Eu_sur), std(all_Eu_sur)/sqrt(length(all_Eu_sur)), mean(all_Em_sur), std(all_Em_sur)/sqrt(length(all_Em_sur)),
+            mean(all_Tpu), std(all_Tpu)/sqrt(length(all_Tpu)), mean(all_Tpm), std(all_Tpm)/sqrt(length(all_Tpm)),
+            mean(all_Tpu_sur), std(all_Tpu_sur)/sqrt(length(all_Tpu_sur)), mean(all_Tpm_sur), std(all_Tpm_sur)/sqrt(length(all_Tpm_sur)),
             mean(u_sur), std(u_sur)/sqrt(length(u_sur)), mean(u_ext), std(u_ext)/sqrt(length(u_ext)), 
             mean(m_sur), std(m_sur)/sqrt(length(m_sur)), mean(m_ext), std(m_ext)/sqrt(length(m_ext))]
-        print(i, " °C Complete, ", "richness ",mean(all),"\n") 
+        print(i, " °C Complete, ", "richness ", mean(all_rich),"\n") 
     end # > 2 hours for 50 j 
 
 col_names = ["richness", "richness_err", "feas", "feas_err", "ELV", "ELV_err", 
-            "ϵ_sur_mean", "ϵ_sur_err", "ϵ_ext_mean", "ϵ_ext_err", "ϵ_var_mean", "ϵ_var_err",
+            "ϵ_sur_mean", "ϵ_sur_err", "ϵ_ext_mean", "ϵ_ext_err", "ϵ", "ϵ_err","ϵ_var_mean", "ϵ_var_err", "ϵ_r0", "ϵ_r0_err",
+            "Eu", "Eu_err", "Em", "Em_err", "Eu_sur", "Eu_sur_err", "Em_sur", "Em_sur_err",
+            "Tpu", "Tpu_err", "Tpm", "Tpm_err", "Tpu_sur", "Tpu_sur_err", "Tpm_sur", "Tpm_sur_err", 
             "u_sur_mean", "u_sur_err", "u_ext_mean", "u_ext_err", "m_sur_mean", "m_sur_err", "m_ext_mean", "m_ext_err"];
 everything = DataFrame(everything, col_names);
 

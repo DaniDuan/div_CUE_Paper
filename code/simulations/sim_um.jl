@@ -173,3 +173,53 @@ axislegend(position = :rt)
 Label(f[1,1, TopLeft()], "(b)")
 f
 save("../result/Bm_Ea_em.png", f) 
+
+
+#### only u and m
+
+ρ_t=[-0.3500 -0.3500]
+num_temps = 61
+Temp_rich = range(0, num_temps-1, length = num_temps)
+T = Temp_rich .+ 273.15
+k = 0.0000862 # Boltzman constant
+B0 = [log(0.2875 * exp((-0.82/k) * ((1/Tr)-(1/273.15)))/(1 + (0.82/(Ed - 0.82)) * exp(Ed/k * (1/308.15 - 1/Tr)))) log(0.138 *exp((-0.67/k) * ((1/Tr)-(1/273.15)))/(1 + (0.67/(Ed - 0.67)) * exp(Ed/k * (1/311.15 - 1/Tr))))]# Using CUE0 = 0.22, mean growth rate = 0.48
+B0_var = 0.17*abs.(B0); E_mean = [0.82 0.67]; E_var =  0.14*abs.(E_mean)
+cov_xy = ρ_t .* B0_var.^0.5 .* E_var .^ 0.5
+meanv = [B0 ; E_mean]
+cov_u = [B0_var[1] cov_xy[1]; cov_xy[1] E_var[1]]
+cov_m = [B0_var[2] cov_xy[2]; cov_xy[2] E_var[2]]
+
+
+f = Figure(fontsize = 35, resolution = (1200, 800));
+ax1 = Axis(f[1,1], xlabel = "Temperature (°C)", ylabel = "Uptake Rate", xlabelsize = 50, ylabelsize = 50, ygridvisible = false, xgridvisible = false) 
+for i in 1:N
+    allu = rand(MvNormal(meanv[:,1], cov_u), 1)
+    allm = rand(MvNormal(meanv[:,2], cov_m), 1)
+    B = [exp.(allu[1,:]) exp.(allm[1,:])]
+    E = [allu[2,:] allm[2,:]]
+    Tpu = 273.15 .+ rand(Normal(35, 5), 1)
+    Tpm = Tpu .+ 2.6
+    Tp = [Tpu Tpm]
+    temp_p = B .* exp.((-E./k) .* ((1 ./T) .-(1/Tr)))./(1 .+ (E./(Ed .- E)) .* exp.(Ed/k .* (1 ./Tp .- 1 ./T)))
+    lines!(ax1, Temp_rich, temp_p[:,1], color = ("#FA8328",0.75), linewidth = 1)
+    # lines!(ax1, Temp_rich, temp_p[:,2], color = ("#015845",0.75), linewidth = 1)
+end
+vlines!(ax1, 30, color = :black, linestyle = :dash)
+f
+
+save("../result/u.png", f) 
+
+N = 1
+M = 5
+### Heatmaps 
+T = 273.15 + 10
+p = generate_params(N, M; f_u=F_u, f_m=F_m, f_ρ=F_ρ, f_ω=F_ω, T=T, ρ_t=ρ_t, Tr=Tr, Ed=Ed)
+
+f = Figure(resolution = (1200, 1200));
+ax = Axis(f[1,1], ygridvisible = true, xgridvisible = true)
+
+hidedecorations!(ax, ticks = false)
+heatmap!(ax, p.l[1, :,:], colormap = :grays)
+f
+
+save("../result/li.png", f) 
