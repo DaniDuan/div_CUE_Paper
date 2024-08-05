@@ -10,6 +10,8 @@ using Parameters
 using CSV, DataFrames
 using CairoMakie
 using LsqFit 
+using Logging
+using JLD2
 
 # Include simulation code files
 include("micrm_params.jl") # Contains function gereate_params with default sampling scheme
@@ -21,7 +23,6 @@ include("LV_dx.jl") # Defines LV differential equatons, use LV_dx
 include("temp.jl")
 
 include("EFF_LV_p_opt.jl")
-
 ####################################################################################################################################################################################
 function F_m(N, M, kw)
     if haskey(kw, :T)
@@ -51,4 +52,19 @@ function F_u(N, M, kw)
     diri = transpose(rand(Dirichlet(ones(M)),N))
     u = diri.*u_sum
     return u
+end
+
+function cosine_similarity(vec1, vec2)
+    dot_product = dot(vec1, vec2)
+    norm1 = norm(vec1)
+    norm2 = norm(vec2)
+    return dot_product / (norm1 * norm2)
+end
+
+function bray_curtis_dissimilarity(A, B)
+    return sum(abs.(A .- B)) / sum(A .+ B)
+end
+
+function euclidean_distance(A, B)
+    return sqrt(sum((A .- B) .^ 2))
 end

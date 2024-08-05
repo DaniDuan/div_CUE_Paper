@@ -17,7 +17,7 @@ cb = DiscreteCallback(condition, affect!)
 num_temps = 31
 
 # ρ_t= [-0.3500 -0.3500]; # realistic covariance
-ρ_t= [-0.9999 -0.9999]; 
+ρ_t= [0.0000 0.0000]; 
 Temp_rich = range(0, num_temps-1, length = num_temps)
 f = Figure(fontsize = 35, resolution = (2400, 900));
 ax1 = Axis(f[1,1], xlabel = "log(Bᵤ)", ylabel = "Eᵤ", xlabelsize = 50, ylabelsize = 50)
@@ -60,13 +60,14 @@ end
 # vlines!(ax2, Temp_rich[argmin(var(allNu, dims = 1))[2]], color = :red, linestyle = :dash)
 # vlines!(ax4, Temp_rich[argmin(var(allNm, dims = 1))[2]], color = :red, linestyle = :dash)
 
+Label(f[1,1, TopLeft()], "(b)")
 
 cor(log.(allB[:,1]),allE[:,1])
 cor(log.(allB[:,2]),allE[:,2])
 
 f
 # save("../result/BEum.png", f) 
-save("../result/U_R_var_-1.png", f) 
+save("../result/U_R_var_0.png", f) 
 
 
 

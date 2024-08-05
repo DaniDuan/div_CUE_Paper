@@ -1,4 +1,4 @@
-include("../sim_frame.jl")
+include("./sim_frame.jl")
 
 ################### ϵ vs. R* ###############################
 N=100
@@ -36,7 +36,7 @@ ax = Axis(f[1,1], xlabel = "CUE", ylabel = "R*", xlabelsize = 50, ylabelsize = 5
 scatter!(ax, ϵ_ext, R_ext, color = ("#4F363E", 0.4), markersize = 25, label = "Extinct")
 scatter!(ax, ϵ_sur, R_sur, color = ("#EF8F8C",1), marker = :star4, markersize = 25, label = "Survivor")
 axislegend(position = :rt)
-Label(f[1,1, TopLeft()], "(b)")
+Label(f[1,1, TopLeft()], "(c)")
 f
 
 save("../result/CUE_R.png", f) 
